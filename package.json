@@ -5,7 +5,7 @@
 	"main": "server.ts",
 	"type": "module",
 	"scripts": {
-    "test": "jest src/tests/server.test.ts",
+		"test": "jest src/tests/server.test.ts",
 		"build": "webpack",
 		"start": "node public/bundle.js",
 		"start:dev": "ts-node-dev src/server.ts",
@@ -31,7 +31,7 @@
 	},
 	"dependencies": {
 		"@types/uuid": "^9.0.8",
-		"dotenv": "^16.4.2",
+		"dotenv": "^16.4.3",
 		"uuid": "^9.0.1"
 	}
 }

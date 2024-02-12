@@ -1,6 +1,8 @@
 import http, {IncomingMessage, ServerResponse} from 'http';
 import {v4 as uuidv4} from 'uuid';
 import url, {UrlWithParsedQuery} from 'url';
+import dotenv from 'dotenv';
+dotenv.config();
 
 interface UserData {
 	username: string;
@@ -219,7 +221,7 @@ const server = http.createServer(
 	}
 );
 
-const PORT = process.env.PORT || 4000;
+const PORT = process.env.PORT;
 server.listen(PORT, () => {
 	console.log(`Server is listening on port ${PORT}`);
 });
