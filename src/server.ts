@@ -37,7 +37,22 @@ const isValidUUID = (uuid: string): boolean => {
 	);
 };
 
-const getAllUsers = (): User[] => {
+export const createUser = (userData: UserData): User => {
+	const userId = uuidv4();
+
+	const newUser: User = {
+		id: userId,
+		username: userData.username,
+		age: userData.age,
+		hobbies: userData.hobbies,
+	};
+
+	users.push(newUser);
+
+	return newUser;
+};
+
+export const getAllUsers = (): User[] => {
 	return users;
 };
 
@@ -62,149 +77,145 @@ const updateUser = (
 	return null;
 };
 
-const deleteUser = (userId: string) => {
+export const deleteUser = (userId: string) => {
 	users = users.filter((user) => user.id !== userId);
 };
 
 const server = http.createServer(
 	async (req: IncomingMessage, res: ServerResponse) => {
-			try {
-					const parsedUrl: UrlWithParsedQuery = url.parse(req.url || '', true);
-					const { pathname } = parsedUrl;
+		try {
+			const parsedUrl: UrlWithParsedQuery = url.parse(req.url || '', true);
+			const {pathname} = parsedUrl;
 
-					if (req.method === 'GET' && pathname === '/api/users') {
-							const allUsers = getAllUsers();
-							res.writeHead(200, { 'Content-Type': 'application/json' });
-							res.end(JSON.stringify(allUsers));
-					} else if (
-							req.method === 'GET' &&
-							pathname &&
-							pathname.startsWith('/api/users')
-					) {
-							const userId = `${pathname.slice('/api/users/'.length)}`;
-							if (!isValidUUID(userId)) {
-									res.writeHead(400, { 'Content-Type': 'application/json' });
-									res.end(JSON.stringify({ error: 'Invalid userId format' }));
-									return;
-							}
+			if (req.method === 'GET' && pathname === '/api/users') {
+				const allUsers = getAllUsers();
+				res.writeHead(200, {'Content-Type': 'application/json'});
+				res.end(JSON.stringify(allUsers));
+			} else if (
+				req.method === 'GET' &&
+				pathname &&
+				pathname.startsWith('/api/users')
+			) {
+				const userId = `${pathname.slice('/api/users/'.length)}`;
+				if (!isValidUUID(userId)) {
+					res.writeHead(400, {'Content-Type': 'application/json'});
+					res.end(JSON.stringify({error: 'Invalid userId format'}));
+					return;
+				}
 
-							const user = getUserById(userId);
-							if (user) {
-									res.writeHead(200, { 'Content-Type': 'application/json' });
-									res.end(JSON.stringify(user));
-							} else {
-									res.writeHead(404, { 'Content-Type': 'application/json' });
-									res.end(JSON.stringify({ error: 'User not found' }));
-							}
-					} else if (req.method === 'POST' && pathname === '/api/users') {
-							let body = '';
-							req.on('data', (chunk) => {
-									body += chunk.toString();
-							});
-							req.on('end', async () => {
-									try {
-											const userData: UserData = JSON.parse(body);
+				const user = getUserById(userId);
+				if (user) {
+					res.writeHead(200, {'Content-Type': 'application/json'});
+					res.end(JSON.stringify(user));
+				} else {
+					res.writeHead(404, {'Content-Type': 'application/json'});
+					res.end(JSON.stringify({error: 'User not found'}));
+				}
+			} else if (req.method === 'POST' && pathname === '/api/users') {
+				let body = '';
+				req.on('data', (chunk) => {
+					body += chunk.toString();
+				});
+				req.on('end', async () => {
+					try {
+						const userData: UserData = JSON.parse(body);
 
-											if (
-													!userData.username ||
-													typeof userData.username !== 'string' ||
-													!userData.age ||
-													typeof userData.age !== 'number' ||
-													!userData.hobbies ||
-													!Array.isArray(userData.hobbies)
-											) {
-													res.writeHead(400, { 'Content-Type': 'application/json' });
-													res.end(JSON.stringify({ error: 'Missing or invalid required fields' }));
-													return;
-											}
+						if (
+							!userData.username ||
+							typeof userData.username !== 'string' ||
+							!userData.age ||
+							typeof userData.age !== 'number' ||
+							!userData.hobbies ||
+							!Array.isArray(userData.hobbies)
+						) {
+							res.writeHead(400, {'Content-Type': 'application/json'});
+							res.end(
+								JSON.stringify({error: 'Missing or invalid required fields'})
+							);
+							return;
+						}
 
-											const userId = uuidv4();
+						const newUser = createUser(userData);
 
-											const newUser = {
-													id: userId,
-													username: userData.username,
-													age: userData.age,
-													hobbies: userData.hobbies,
-											};
-											users.push(newUser);
-
-											res.writeHead(201, { 'Content-Type': 'application/json' });
-											res.end(JSON.stringify(newUser));
-									} catch (error) {
-											res.writeHead(400, { 'Content-Type': 'application/json' });
-											res.end(JSON.stringify({ error: 'Invalid JSON format' }));
-									}
-							});
-					} else if (
-							req.method === 'PUT' &&
-							pathname &&
-							pathname.startsWith('/api/users')
-					) {
-							const userId = pathname.slice('/api/users/'.length);
-							if (!isValidUUID(userId)) {
-									res.writeHead(400, { 'Content-Type': 'application/json' });
-									res.end(JSON.stringify({ error: 'Invalid userId format' }));
-									return;
-							}
-							const user = getUserById(userId);
-							if (!user) {
-									res.writeHead(404, { 'Content-Type': 'application/json' });
-									res.end(JSON.stringify({ error: 'User not found' }));
-									return;
-							}
-
-							let body = '';
-
-							req.on('data', (chunk) => {
-									body += chunk.toString();
-							});
-
-							req.on('end', () => {
-									try {
-											const userData = JSON.parse(body);
-											if (!isValidUserData(userData)) {
-													res.writeHead(400, { 'Content-Type': 'application/json' });
-													res.end(JSON.stringify({ error: 'Missing or invalid required fields' }));
-													return;
-											}
-											const updatedUser = updateUser(userId, userData);
-											res.writeHead(200, { 'Content-Type': 'application/json' });
-											res.end(JSON.stringify(updatedUser));
-									} catch (error) {
-											res.writeHead(400, { 'Content-Type': 'application/json' });
-											res.end(JSON.stringify({ error: 'Invalid JSON format' }));
-									}
-							});
-					} else if (
-							req.method === 'DELETE' &&
-							pathname &&
-							pathname.startsWith('/api/users')
-					) {
-							const userId = pathname.slice('/api/users/'.length);
-							if (!isValidUUID(userId)) {
-									res.writeHead(400, { 'Content-Type': 'application/json' });
-									res.end(JSON.stringify({ error: 'Invalid userId format' }));
-									return;
-							}
-							const user = getUserById(userId);
-							if (!user) {
-									res.writeHead(404, { 'Content-Type': 'application/json' });
-									res.end(JSON.stringify({ error: 'User not found' }));
-									return;
-							}
-
-							deleteUser(userId);
-							res.writeHead(204, { 'Content-Type': 'application/json' });
-							res.end(JSON.stringify({ message: 'User deleted successfully' }));
-					} else {
-							res.writeHead(404, { 'Content-Type': 'application/json' });
-							res.end(JSON.stringify({ error: 'Not Found' }));
+						res.writeHead(201, {'Content-Type': 'application/json'});
+						res.end(JSON.stringify(newUser));
+					} catch (error) {
+						res.writeHead(400, {'Content-Type': 'application/json'});
+						res.end(JSON.stringify({error: 'Invalid JSON format'}));
 					}
-			} catch (error) {
-					console.error('Server Error:', error);
-					res.writeHead(500, { 'Content-Type': 'application/json' });
-					res.end(JSON.stringify({ error: 'Internal Server Error' }));
+				});
+			} else if (
+				req.method === 'PUT' &&
+				pathname &&
+				pathname.startsWith('/api/users')
+			) {
+				const userId = pathname.slice('/api/users/'.length);
+				if (!isValidUUID(userId)) {
+					res.writeHead(400, {'Content-Type': 'application/json'});
+					res.end(JSON.stringify({error: 'Invalid userId format'}));
+					return;
+				}
+				const user = getUserById(userId);
+				if (!user) {
+					res.writeHead(404, {'Content-Type': 'application/json'});
+					res.end(JSON.stringify({error: 'User not found'}));
+					return;
+				}
+
+				let body = '';
+
+				req.on('data', (chunk) => {
+					body += chunk.toString();
+				});
+
+				req.on('end', () => {
+					try {
+						const userData = JSON.parse(body);
+						if (!isValidUserData(userData)) {
+							res.writeHead(400, {'Content-Type': 'application/json'});
+							res.end(
+								JSON.stringify({error: 'Missing or invalid required fields'})
+							);
+							return;
+						}
+						const updatedUser = updateUser(userId, userData);
+						res.writeHead(200, {'Content-Type': 'application/json'});
+						res.end(JSON.stringify(updatedUser));
+					} catch (error) {
+						res.writeHead(400, {'Content-Type': 'application/json'});
+						res.end(JSON.stringify({error: 'Invalid JSON format'}));
+					}
+				});
+			} else if (
+				req.method === 'DELETE' &&
+				pathname &&
+				pathname.startsWith('/api/users')
+			) {
+				const userId = pathname.slice('/api/users/'.length);
+				if (!isValidUUID(userId)) {
+					res.writeHead(400, {'Content-Type': 'application/json'});
+					res.end(JSON.stringify({error: 'Invalid userId format'}));
+					return;
+				}
+				const user = getUserById(userId);
+				if (user === undefined) {
+					res.writeHead(404, {'Content-Type': 'application/json'});
+					res.end(JSON.stringify({error: 'User not found'}));
+					return;
+				}
+
+				deleteUser(userId);
+				res.writeHead(204, {'Content-Type': 'application/json'});
+				res.end(JSON.stringify({message: 'User deleted successfully'}));
+			} else {
+				res.writeHead(404, {'Content-Type': 'application/json'});
+				res.end(JSON.stringify({error: 'Not Found'}));
 			}
+		} catch (error) {
+			console.error('Server Error:', error);
+			res.writeHead(500, {'Content-Type': 'application/json'});
+			res.end(JSON.stringify({error: 'Internal Server Error'}));
+		}
 	}
 );
 
